@@ -10,8 +10,6 @@ const seasonYear = '2023'
 
 const apiUrl = baseApiUrl + seasonYear
 
-// match API to database via UID
-// update total wins and record
 // sort database by total wins descending
 
 async function getNumberOfEntries() {
@@ -52,11 +50,10 @@ async function getUpdatedTeamsArray(data) {
         var Pac12 = data.children[8];
         var SEC = data.children[9];
     
-        var nonDivisionConferenceData = [ACC, BigXII, FBSInd, Pac12];
-        var divisionConferenceData = [Big10, SEC];
+        var allConferenceData = [ACC, BigXII, FBSInd, Pac12, Big10, SEC];
         var allTeams = [];
-    
-        function generateTeamObject(teams, conferenceName) {
+        
+        function generateTeamObject(teams) {
             teams.forEach(team => {
                 var newTeam = {}
                 newTeam.displayName = team.team.displayName;
@@ -66,9 +63,9 @@ async function getUpdatedTeamsArray(data) {
             });
         }
 
-        function getTeams(conference, hasDivions) {
+        allConferenceData.forEach(conference => {
             var conferenceName = conference.shortName;
-            if (hasDivions) {
+            if ( conference.hasOwnProperty('children') ) {
                 var division1Teams = conference.children[0].standings.entries;
                 var division2Teams = conference.children[1].standings.entries;
                 generateTeamObject(division1Teams, conferenceName);
@@ -77,14 +74,6 @@ async function getUpdatedTeamsArray(data) {
                 var allConferenceTeams = conference.standings.entries;
                 generateTeamObject(allConferenceTeams, conferenceName);
             }
-        }
-    
-        nonDivisionConferenceData.forEach(conference => {
-            getTeams(conference, false);
-        });
-
-        divisionConferenceData.forEach(conference => {
-            getTeams(conference, true);
         });
 
         return allTeams;
@@ -96,13 +85,7 @@ async function getUpdatedTeamsArray(data) {
 async function queryNotionDB() {
   try {
     const response = await notion.databases.query({
-        database_id: databaseId,
-        sorts: [
-            {
-                property: "Team",
-                direction: "ascending"
-            }
-        ]
+        database_id: databaseId
     })
     return response.results;
   } catch (error) {
@@ -141,7 +124,7 @@ async function getMatchingTeamData(teamName, data) {
     }
 }
 
-async function updatePage(team, data) {
+async function updateTeam(team, data) {
     try {
         var matchingTeamData = await getMatchingTeamData(team.teamName, data);
         const pageId = team.pageId;
@@ -168,10 +151,6 @@ async function updatePage(team, data) {
     }
 }
 
-async function sortDatabaseByWinTotals() {
-    // todo
-}
-
 if (numberOfEntries <= 0) {
     console.log("There are no entries in this database. Please run the init script to generate them.")
 } else {
@@ -181,7 +160,6 @@ if (numberOfEntries <= 0) {
     var espnApi = await getEspnAPI(apiUrl);
     var updatedTeamsArray = await getUpdatedTeamsArray(espnApi);
     teamIdArray.forEach(team => {
-        updatePage(team, updatedTeamsArray);
+        updateTeam(team, updatedTeamsArray);
     });
-    await sortDatabaseByWinTotals();
 }

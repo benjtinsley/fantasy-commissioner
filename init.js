@@ -49,15 +49,13 @@ async function getTeamsArray(data) {
         var Pac12 = data.children[8];
         var SEC = data.children[9];
     
-        var nonDivisionConferenceData = [ACC, BigXII, FBSInd, Pac12];
-        var divisionConferenceData = [Big10, SEC];
+        var allConferenceData = [ACC, BigXII, FBSInd, Pac12, Big10, SEC];
         var allTeams = [];
     
         function generateTeamObject(teams, conferenceName) {
             teams.forEach(team => {
                 var newTeam = {}
                 newTeam.conference = conferenceName;
-                newTeam.uid = team.team.uid;
                 newTeam.displayName = team.team.displayName;
                 newTeam.overallWins = team.stats[8].value;
                 newTeam.overallRecord = team.stats[12].summary;
@@ -65,9 +63,9 @@ async function getTeamsArray(data) {
             });
         }
 
-        function getTeams(conference, hasDivions) {
+        allConferenceData.forEach(conference => {
             var conferenceName = conference.shortName;
-            if (hasDivions) {
+            if ( conference.hasOwnProperty('children') ) {
                 var division1Teams = conference.children[0].standings.entries;
                 var division2Teams = conference.children[1].standings.entries;
                 generateTeamObject(division1Teams, conferenceName);
@@ -76,14 +74,6 @@ async function getTeamsArray(data) {
                 var allConferenceTeams = conference.standings.entries;
                 generateTeamObject(allConferenceTeams, conferenceName);
             }
-        }
-    
-        nonDivisionConferenceData.forEach(conference => {
-            getTeams(conference, false);
-        });
-
-        divisionConferenceData.forEach(conference => {
-            getTeams(conference, true);
         });
 
         return allTeams;
@@ -126,15 +116,6 @@ async function addTeam(team) {
         },
         "Overall Wins": {
             "number": team.overallWins
-        },
-        "UID": {
-            "rich_text": [
-                {
-                    "text": {
-                        "content": team.uid
-                    }
-                }
-            ]
         }
       }
     })
