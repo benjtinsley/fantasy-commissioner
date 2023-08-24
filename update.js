@@ -10,8 +10,6 @@ const seasonYear = '2023'
 
 const apiUrl = baseApiUrl + seasonYear
 
-// sort database by total wins descending
-
 async function getNumberOfEntries() {
     try{
         const response = await notion.databases.query({ database_id: databaseId });
