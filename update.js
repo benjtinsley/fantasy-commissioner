@@ -57,6 +57,7 @@ async function getUpdatedTeamsArray(data) {
                 newTeam.displayName = team.team.displayName;
                 newTeam.overallWins = team.stats[8].value;
                 newTeam.overallRecord = team.stats[12].summary;
+                newTeam.awayPointDiff = team.stats[30].value
                 allTeams.push(newTeam);
             });
         }
@@ -125,6 +126,7 @@ async function getMatchingTeamData(teamName, data) {
 async function updateTeam(team, data) {
     try {
         var matchingTeamData = await getMatchingTeamData(team.teamName, data);
+        console.log(`Updating record for ${team.teamName}...`);
         const pageId = team.pageId;
         const response = await notion.pages.update({
             page_id: pageId,
@@ -137,14 +139,17 @@ async function updateTeam(team, data) {
                             }
                         }
                     ]
-                }, 
+                },
                 "Overall Wins": {
                     "number": matchingTeamData.overallWins
                 },
+                "Away Point Differential": {
+                    "number": matchingTeamData.awayPointDiff
+                },
             },
         });
-        console.log(`Updated record for ${team.teamName}`);
     }  catch (error) {
+        console.log(`Error with ${team.teamName}:`);
         console.log(error)
     }
 }
