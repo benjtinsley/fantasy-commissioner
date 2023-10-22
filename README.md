@@ -2,7 +2,7 @@
 
 Pick as many NCAA teams as you like from whatever Power 5 or FBS independed conference and make realignment hell a reality.
 
-## Get set uo
+## Get set up
 1. add `NOTION_INTEGRATION_KEY` and `NOTION_DATABASE_KEY` to .env file linking to your account and the database you wish to use
 1. run `npm install`
 
