@@ -143,7 +143,7 @@ async function updateTeam(team, data) {
                 "Overall Wins": {
                     "number": matchingTeamData.overallWins
                 },
-                "Away Point Differential": {
+                "Away Point Diff.": {
                     "number": matchingTeamData.awayPointDiff
                 },
             },
