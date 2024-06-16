@@ -9,4 +9,4 @@ Pick as many NCAA teams as you like from whatever NCAA D-I conference and realig
 
 ## Tasks
 
-`node airtable.js` will dump all the NCAA Power 5 and FBS Independent teams into your specified Airtable base and update the team records and stats as the season progresses each time it is called thereafter.
+`node airtable.js` will dump all the NCAA D-I teams into your specified Airtable base and update the team records and stats as the season progresses each time it is called thereafter.
