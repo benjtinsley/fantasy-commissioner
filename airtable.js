@@ -7,12 +7,11 @@ import 'dotenv/config';
 const PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
 const BASE_ID = process.env.AIRTABLE_BASE_ID;
 const TABLE_ID = process.env.AIRTABLE_TABLE_ID;
-const YEAR = process.env.SEASON_YEAR
+const baseApiUrl = process.env.BASE_API_URL;
+const year = process.env.SEASON_YEAR
+const teamUrl = process.env.TEAM_API_URL;
 
-const baseApiUrl = 'https://site.web.api.espn.com/apis/v2/sports/football/college-football/standings?season=';
-const teamUrl = 'http://site.api.espn.com/apis/site/v2/sports/football/college-football/teams/';
-const apiUrl = baseApiUrl + YEAR;
-
+const apiUrl = baseApiUrl + year;
 
 Airtable.configure({
   endpointUrl: 'https://api.airtable.com',
@@ -40,14 +39,14 @@ async function checkAirtableInitialized() {
   }
 }
 
-// Function to fetch data from ESPN API
-async function getEspnAPI(url) {
+// Function to fetch data from API
+async function getLeagueAPI(url) {
   try {
     const response = await axios.get(url);
-    console.log(`Successfully pulled all ESPN teams data for the ${YEAR} season.`);
+    console.log(`Successfully pulled all teams data for the ${year} season.`);
     return response.data;
   } catch (error) {
-    console.error("Error fetching data from ESPN API:", error);
+    console.error("Error fetching data from API:", error);
     return null;
   }
 }
@@ -125,9 +124,10 @@ async function getTeamData(teams) {
 // Function to update team record in Airtable
 async function updateTeamRecord(team) {
   try {
+    // Update team via field IDs
     await base(TABLE_ID).update(team.id, {
       fldECHdTFhzJXczaU: team.overallRecord,
-      fldB5TAOajQ4fcBEV : team.overallWins,
+      fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
       // fldr9L1u7ouUh42uR: team.nextGame,
       fldpzovvWKafBv8P4: team.awayPointDiff
@@ -141,6 +141,7 @@ async function updateTeamRecord(team) {
 // Function to add team to Airtable
 async function addTeamToAirtable(team) {
   try {
+    // Add team to Airtable via field IDs
     await base(TABLE_ID).create({
       flddG7XLZc20dgWmq: team.displayName,
       fldECHdTFhzJXczaU: team.overallRecord,
@@ -166,7 +167,7 @@ async function addTeamToAirtable(team) {
   const hasInitialized = await checkAirtableInitialized();
 
   console.log("Starting the entries...");
-  const espnApi = await getEspnAPI(apiUrl);
+  const espnApi = await getLeagueAPI(apiUrl);
 
   if (espnApi) {
     const teamsArray = await getTeamsArray(espnApi);
@@ -185,6 +186,10 @@ async function addTeamToAirtable(team) {
       await addTeamToAirtable(team);
     }
 
-    console.log(`All ${augmentedTeamArray.length} NCAA team data for the ${YEAR} season have been added to Airtable.`);
+    console.log(`All ${augmentedTeamArray.length} NCAA team data for the ${year} season have been added to Airtable.`);
+    return;
   }
+
+  console.log("No data was fetched from the API.");
+  return;
 })();
