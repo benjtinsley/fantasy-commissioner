@@ -1,3 +1,7 @@
+const fs = require('fs');
+const csv = require('csv-parser');
+const path = require('path');
+
 import axios from 'axios';
 import Airtable from 'airtable';
 import 'dotenv/config';
@@ -10,6 +14,7 @@ const TABLE_ID = process.env.AIRTABLE_TABLE_ID;
 const baseApiUrl = process.env.BASE_API_URL;
 const year = process.env.SEASON_YEAR
 const teamUrl = process.env.TEAM_API_URL;
+const matchupUrl = process.env.SCOREBOARD_API_URL;
 
 const apiUrl = baseApiUrl + year;
 
@@ -24,7 +29,7 @@ async function checkAirtableInitialized() {
   try {
     const records = await base(TABLE_ID).select({
       maxRecords: 1,
-      view: "Grid view"
+      view: "All Teams"
     }).firstPage();
     
     if (records.length > 0) {
@@ -99,8 +104,9 @@ async function getTeamsArray(data) {
 async function getTeamData(teams) {
   try {
     const teamData = [];
-
+    
     for (const team of teams) {
+      console.log(`Getting additional data for ${team.location}...`);
       const response = await axios.get(teamUrl + team.id);
       const teamInfo = response.data.team;
 
@@ -109,9 +115,16 @@ async function getTeamData(teams) {
         standingSummary: teamInfo.standingSummary,
         logo: teamInfo.logos[0].href,
         // predictedRecord: teamInfo.predictedRecord,
-        // nextGame: teamInfo.nextEvent[0].shortName,
         espnUrl: teamInfo.links[0].href
       });
+
+      const nextGameDetails = teamInfo.nextEvent?.[0]?.shortName ?? null;
+      if (nextGameDetails) {
+        teamData.push({
+          ...team,
+          nextGameDetails: nextGameDetails
+        });
+      }
     }
 
     return teamData;
@@ -121,15 +134,54 @@ async function getTeamData(teams) {
   }
 }
 
+// Function to get odds for games
+async function getMatchupOdds(teams) {
+  try {
+    const teamData = [];
+    
+    console.log(`Getting odds for upcoming matchups...`);
+    const response = await axios.get(matchupUrl);
+    const weeklyMatchups = response.data.events;
+    console.log(`Successfully pulled odds for ${weeklyMatchups.length} matchups. Populating....`);
+
+    for (const team of teams) {
+      if (!team.nextGameDetails) {
+        continue;
+      }
+      console.log(`Getting odds for ${team.nextGameDetails}...`);
+      for (const matchup of weeklyMatchups) {
+        if (matchup.shortName == team.nextGameDetails) {
+          const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details ?? null;
+          if (nextGameOdds) {
+            teamData.push({
+              ...team,
+              nextGameOdds: nextGameOdds
+            });
+          }
+        }
+      }
+    }
+
+    return teamData;
+  } catch (error) {
+    console.error("Error fetching matchup odds:", error);
+    return [];
+  }
+}
+
 // Function to update team record in Airtable
 async function updateTeamRecord(team) {
+  const nextGameDetails = team?.nextGameDetails ? team.nextGameDetails : '';
+  const nextGameOdds = team?.nextGameOdds ? team.nextGameOdds : '';
+  
   try {
     // Update team via field IDs
-    await base(TABLE_ID).update(team.id, {
+    await base(TABLE_ID).update(team.displayName, {
       fldECHdTFhzJXczaU: team.overallRecord,
       fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
-      // fldr9L1u7ouUh42uR: team.nextGame,
+      fldr9L1u7ouUh42uR: nextGameDetails,
+      fldzp5QddXZmA3K3S: nextGameOdds,
       fldpzovvWKafBv8P4: team.awayPointDiff
     });
     console.log(`Success! Updated record for ${team.location}.`);
@@ -140,6 +192,9 @@ async function updateTeamRecord(team) {
 
 // Function to add team to Airtable
 async function addTeamToAirtable(team) {
+  const nextGameDetails = team?.nextGameDetails ? team.nextGameDetails : '';
+  const nextGameOdds = team?.nextGameOdds ? team.nextGameOdds : '';
+
   try {
     // Add team to Airtable via field IDs
     await base(TABLE_ID).create({
@@ -151,9 +206,9 @@ async function addTeamToAirtable(team) {
       fldVuh4vWxmLnqmpe: team.location,
       fldwUh1llsuqfcefE: team.standingSummary,
       fldAh58GvZbwkyMox: [{ url: team.logo }],
-      // fldr9L1u7ouUh42uR: team.nextGame
-      // fldzp5QddXZmA3K3S: team.predictedRecord,
-      fldZ20Gy4VMskTvBj: team.espnUrl, 
+      fldr9L1u7ouUh42uR: nextGameDetails,
+      fldzp5QddXZmA3K3S: nextGameOdds,
+      fldZ20Gy4VMskTvBj: team.espnUrl
     });
     console.log(`Success! Added ${team.location}.`);
   } catch (error) {
@@ -170,23 +225,25 @@ async function addTeamToAirtable(team) {
   const espnApi = await getLeagueAPI(apiUrl);
 
   if (espnApi) {
-    const teamsArray = await getTeamsArray(espnApi);
-    const augmentedTeamArray = await getTeamData(teamsArray);
+    let teamsArray = await getTeamsArray(espnApi);
+    teamsArray = await getTeamData(teamsArray);
+    teamsArray = await getMatchupOdds(teamsArray);
     
     // only update a few fields on the records
     if (hasInitialized) {
-      for (const team of augmentedTeamArray) {
+      teamsArray = addAirtableIDs(teamsArray);
+      for (const team of teamsArray) {
         await updateTeamRecord(team);
       }
       return;
     }
 
     // add all records
-    for (const team of augmentedTeamArray) {
+    for (const team of teamsArray) {
       await addTeamToAirtable(team);
     }
 
-    console.log(`All ${augmentedTeamArray.length} NCAA team data for the ${year} season have been added to Airtable.`);
+    console.log(`All ${teamsArray.length} NCAA team data for the ${year} season have been added to Airtable.`);
     return;
   }
 
