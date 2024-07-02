@@ -1,7 +1,8 @@
-const fs = require('fs');
-const csv = require('csv-parser');
-const path = require('path');
-
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import fs from 'fs';
+import csv from 'csv-parser';
+import path from 'path';
 import axios from 'axios';
 import Airtable from 'airtable';
 import 'dotenv/config';
@@ -17,6 +18,10 @@ const teamUrl = process.env.TEAM_API_URL;
 const matchupUrl = process.env.SCOREBOARD_API_URL;
 
 const apiUrl = baseApiUrl + year;
+
+// derive __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 Airtable.configure({
   endpointUrl: 'https://api.airtable.com',
@@ -136,6 +141,8 @@ async function getTeamData(teams) {
 
 // Function to get odds for games
 async function getMatchupOdds(teams) {
+  // todo: keep table of previously stored matchups and check that first before checking API
+
   try {
     const teamData = [];
     
@@ -176,7 +183,7 @@ async function updateTeamRecord(team) {
   
   try {
     // Update team via field IDs
-    await base(TABLE_ID).update(team.displayName, {
+    await base(TABLE_ID).update(team.airtableID, {
       fldECHdTFhzJXczaU: team.overallRecord,
       fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
@@ -216,6 +223,48 @@ async function addTeamToAirtable(team) {
   }
 }
 
+async function addAirtableIDs(teams) {
+  const teamsCsvPath = path.join(__dirname, 'data', 'team-to-id.csv');
+
+  const parseCsv = (csvFilePath) => {
+    return new Promise((resolve, reject) => {
+      const results = [];
+      fs.createReadStream(csvFilePath)
+        .pipe(csv())
+        .on('data', (data) => results.push(data))
+        .on('end', () => resolve(results))
+        .on('error', (error) => reject(error));
+    });
+  };
+
+  try {
+    const csvData = await parseCsv(teamsCsvPath);
+    
+    // Create a map of team names to Airtable IDs for quick lookup
+    const airtableIdMap = {};
+    csvData.forEach((row) => {
+      const teamName = row['Team'].trim();
+      const airtableID = row.Airtable_ID.trim();
+      airtableIdMap[teamName] = airtableID;
+    });
+
+    // Add Airtable ID to team data objects
+    teams.forEach((team) => {
+      const airtableID = airtableIdMap[team.displayName];
+      if (airtableID) {
+        team.airtableID = airtableID;
+      } else {
+        console.warn(`Airtable ID not found for team: ${team.displayName}`);
+      }
+    });
+
+    return teams;
+  } catch (error) {
+    console.error("Error adding Airtable IDs:", error);
+    return teams;
+  }
+}
+
 // Main function to fetch and update data
 (async function() {
   // Check if Airtable has been initialized
@@ -225,28 +274,42 @@ async function addTeamToAirtable(team) {
   const espnApi = await getLeagueAPI(apiUrl);
 
   if (espnApi) {
+    console.group("Processing data...");
     let teamsArray = await getTeamsArray(espnApi);
+    console.groupEnd();
+    
+    console.group("Fetching additional data...");
     teamsArray = await getTeamData(teamsArray);
+    console.groupEnd();
+
+    console.group("Fetching matchup odds...");
     teamsArray = await getMatchupOdds(teamsArray);
+    console.groupEnd();
     
     // only update a few fields on the records
     if (hasInitialized) {
-      teamsArray = addAirtableIDs(teamsArray);
+      teamsArray = await addAirtableIDs(teamsArray);
+
+      console.group(`Updating team data in airtable...`);
       for (const team of teamsArray) {
         await updateTeamRecord(team);
       }
+      console.groupEnd();
       return;
     }
 
     // add all records
+    console.group(`Adding team data to airtable...`);
     for (const team of teamsArray) {
       await addTeamToAirtable(team);
     }
+    console.groupEnd();
 
     console.log(`All ${teamsArray.length} NCAA team data for the ${year} season have been added to Airtable.`);
     return;
   }
 
   console.log("No data was fetched from the API.");
+  console.groupEnd();
   return;
 })();
