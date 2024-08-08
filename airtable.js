@@ -199,8 +199,8 @@ async function updateTeamRecord(team) {
 
 // Function to add team to Airtable
 async function addTeamToAirtable(team) {
-  const nextGameDetails = team?.nextGameDetails ? team.nextGameDetails : '';
-  const nextGameOdds = team?.nextGameOdds ? team.nextGameOdds : '';
+  const nextGameDetails = team?.nextGameDetails ? team.nextGameDetails : '-- No Game --';
+  const nextGameOdds = team?.nextGameOdds ? team.nextGameOdds : '-- No Odds --';
 
   try {
     // Add team to Airtable via field IDs
