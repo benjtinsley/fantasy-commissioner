@@ -3,7 +3,7 @@ name: Update Data
 # Schedule the workflow to run once a week
 on:
   schedule:
-    - cron: '30 9 * * 0' # Runs every Sunday at 09:30 AM (02:30 MT)
+    - cron: '00 8 * * *' # Runs every day at 08:00 GMT (01:00 MT)
 
 jobs:
   weekly-task:
