@@ -9,13 +9,13 @@ import 'dotenv/config';
 
 
 // Airtable configuration
-const PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
-const BASE_ID = process.env.AIRTABLE_BASE_ID;
-const TABLE_ID = process.env.AIRTABLE_TABLE_ID;
-const baseApiUrl = process.env.BASE_API_URL;
-const year = process.env.SEASON_YEAR
-const teamUrl = process.env.TEAM_API_URL;
-const matchupUrl = process.env.SCOREBOARD_API_URL;
+const PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN || env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+const BASE_ID = process.env.AIRTABLE_BASE_ID || env.AIRTABLE_BASE_ID;
+const TABLE_ID = process.env.AIRTABLE_TABLE_ID || env.AIRTABLE_TABLE_ID;
+const baseApiUrl = process.env.BASE_API_URL || env.BASE_API_URL;
+const year = process.env.SEASON_YEAR || env.SEASON_YEAR;
+const teamUrl = process.env.TEAM_API_URL || env.TEAM_API_URL;
+const matchupUrl = process.env.SCOREBOARD_API_URL || env.SCOREBOARD_API_URL;
 
 const apiUrl = baseApiUrl + year;
 
