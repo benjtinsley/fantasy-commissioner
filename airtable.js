@@ -162,6 +162,7 @@ async function getMatchupOdds(teams) {
       
       for (const matchup of weeklyMatchups) {
         if (matchup.shortName == team.nextGameDetails) {
+          matchupFound = true;
           const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
           const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.video?.[0]?.headline;
 
