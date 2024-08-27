@@ -9,13 +9,15 @@ import 'dotenv/config';
 
 
 // Airtable configuration
-const PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN || vars.AIRTABLE_PERSONAL_ACCESS_TOKEN;
-const BASE_ID = process.env.AIRTABLE_BASE_ID || vars.AIRTABLE_BASE_ID;
-const TABLE_ID = process.env.AIRTABLE_TABLE_ID || vars.AIRTABLE_TABLE_ID;
-const baseApiUrl = process.env.BASE_API_URL || vars.BASE_API_URL;
-const year = process.env.SEASON_YEAR || vars.SEASON_YEAR;
-const teamUrl = process.env.TEAM_API_URL || vars.TEAM_API_URL;
-const matchupUrl = process.env.SCOREBOARD_API_URL || vars.SCOREBOARD_API_URL;
+const PAT = process.env.AIRTABLE_PERSONAL_ACCESS_TOKEN;
+const BASE_ID = process.env.AIRTABLE_BASE_ID;
+const TABLE_ID = process.env.AIRTABLE_TABLE_ID;
+const baseApiUrl = process.env.BASE_API_URL;
+const year = process.env.SEASON_YEAR;
+const teamUrl = process.env.TEAM_API_URL;
+const matchupUrl = process.env.SCOREBOARD_API_URL;
+
+let week = -1;
 
 const apiUrl = baseApiUrl + year;
 
@@ -71,7 +73,7 @@ async function getTeamsArray(data) {
       const conferenceName = conference.shortName;
       const hasDivisions = !!(conference.children);
 
-      console.log(`Getting teams for ${conferenceName} with ${hasDivisions ? conference.children.length + ' divisions' : 'no divisions'}.`);
+      console.log(`${conferenceName} team info taken with ${hasDivisions ? conference.children.length + ' divisions' : 'no divisions'}.`);
       
       let teams = [];
       
@@ -89,9 +91,9 @@ async function getTeamsArray(data) {
           conference: conferenceName,
           displayName: team.team.displayName,
           location: team.team.location,
-          overallWins: team.stats.find(stat => stat.name === 'wins').value,
+          overallWins: team.stats.find(stat => stat.type === 'wins').value,
           overallRecord: team.stats.find(stat => stat.name === 'overall').displayValue,
-          awayPointDiff: team.stats.find(stat => stat.name === 'pointDifferential').value,
+          awayPointDiff: team.stats.find(stat => stat.type === 'awayrecord_pointdifferential').value,
           abbreviation: team.team.abbreviation,
           id: team.team.id
         });
@@ -111,25 +113,18 @@ async function getTeamData(teams) {
     const teamData = [];
     
     for (const team of teams) {
-      console.log(`Getting additional data for ${team.location}...`);
+      console.log(`${team.location} data taken from ${teamUrl + team.id}`);
       const response = await axios.get(teamUrl + team.id);
       const teamInfo = response.data.team;
+      const nextGameDetails = teamInfo.nextEvent?.[0]?.shortName;
 
       teamData.push({
         ...team,
         standingSummary: teamInfo.standingSummary,
         logo: teamInfo.logos[0].href,
-        // predictedRecord: teamInfo.predictedRecord,
-        espnUrl: teamInfo.links[0].href
+        espnUrl: teamInfo.links[0].href,
+        nextGameDetails: nextGameDetails
       });
-
-      const nextGameDetails = teamInfo.nextEvent?.[0]?.shortName ?? null;
-      if (nextGameDetails) {
-        teamData.push({
-          ...team,
-          nextGameDetails: nextGameDetails
-        });
-      }
     }
 
     return teamData;
@@ -148,24 +143,53 @@ async function getMatchupOdds(teams) {
     
     console.log(`Getting odds for upcoming matchups...`);
     const response = await axios.get(matchupUrl);
+    // for console message
+    week = response.data.week.number;
+
     const weeklyMatchups = response.data.events;
     console.log(`Successfully pulled odds for ${weeklyMatchups.length} matchups. Populating....`);
 
     for (const team of teams) {
       if (!team.nextGameDetails) {
+        console.warn(`No matchup found for ${team.location}. Skipping odds...`);
         continue;
       }
-      console.log(`Getting odds for ${team.nextGameDetails}...`);
+
+      // for setting default odds if no matchup found
+      let matchupFound = false;
+      
+      // console.log(`Checking odds for ${team.nextGameDetails}...`);
+      
       for (const matchup of weeklyMatchups) {
         if (matchup.shortName == team.nextGameDetails) {
-          const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details ?? null;
-          if (nextGameOdds) {
+          const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
+          const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.video?.[0]?.headline;
+
+          console.log(`${team.nextGameDetails} matchup found. Odds: ${nextGameOdds || lastGameResult}`);
+          
+          if (!!nextGameOdds) {
             teamData.push({
               ...team,
               nextGameOdds: nextGameOdds
             });
+            // console.log(`Odds found for ${team.nextGameDetails}: ${teamData.nextGameOdds}`);
+          } else if (!!lastGameResult) {
+            teamData.push({
+              ...team,
+              nextGameOdds: `Recap: ${lastGameResult}`
+            });
+            // console.log(`Last game result for ${team.nextGameDetails}: ${teamData.lastGameResult}`);
           }
+          continue;
         }
+      }
+
+      if (!matchupFound) {
+        // set default odds to no odds
+        teamData.push({
+          ...team,
+          nextGameOdds: '  none'
+        });
       }
     }
 
@@ -178,8 +202,6 @@ async function getMatchupOdds(teams) {
 
 // Function to update team record in Airtable
 async function updateTeamRecord(team) {
-  const nextGameDetails = team?.nextGameDetails ? team.nextGameDetails : '';
-  const nextGameOdds = team?.nextGameOdds ? team.nextGameOdds : '';
   
   try {
     // Update team via field IDs
@@ -187,11 +209,11 @@ async function updateTeamRecord(team) {
       fldECHdTFhzJXczaU: team.overallRecord,
       fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
-      fldr9L1u7ouUh42uR: nextGameDetails,
-      fldzp5QddXZmA3K3S: nextGameOdds,
+      fldr9L1u7ouUh42uR: team.nextGameDetails,
+      fldzp5QddXZmA3K3S: team.nextGameOdds,
       fldpzovvWKafBv8P4: team.awayPointDiff
     });
-    console.log(`Success! Updated record for ${team.location}.`);
+    console.log(`${team.location} record updated.`);
   } catch (error) {
     console.error(`Error updating ${team.location} in Airtable:`, error);
   }
@@ -217,7 +239,7 @@ async function addTeamToAirtable(team) {
       fldzp5QddXZmA3K3S: nextGameOdds,
       fldZ20Gy4VMskTvBj: team.espnUrl
     });
-    console.log(`Success! Added ${team.location}.`);
+    console.log(`Updated ${team.location} data in Airtable.`);
   } catch (error) {
     console.error(`Error adding ${team.location} to Airtable:`, error);
   }
@@ -245,10 +267,12 @@ async function addAirtableIDs(teams) {
     csvData.forEach((row) => {
       const teamName = row['Team'].trim();
       const airtableID = row.Airtable_ID.trim();
+      // console.log(`Adding Airtable ID for ${teamName} with ID: ${airtableID}`);
       airtableIdMap[teamName] = airtableID;
     });
 
     // Add Airtable ID to team data objects
+    // console.log(`Adding Airtable IDs to team the ${teams.length} records...`);
     teams.forEach((team) => {
       const airtableID = airtableIdMap[team.displayName];
       if (airtableID) {
@@ -257,11 +281,11 @@ async function addAirtableIDs(teams) {
         console.warn(`Airtable ID not found for team: ${team.displayName}`);
       }
     });
-
+    // console.log(`Added Airtable IDs to ${teams.length} team records.`);
     return teams;
   } catch (error) {
     console.error("Error adding Airtable IDs:", error);
-    return teams;
+    return;
   }
 }
 
@@ -275,37 +299,49 @@ async function addAirtableIDs(teams) {
 
   if (espnApi) {
     console.group("Processing data...");
-    let teamsArray = await getTeamsArray(espnApi);
+    const teamsArray = await getTeamsArray(espnApi);
+    console.log(`Successfully processed data for ${teamsArray.length} teams.`);
     console.groupEnd();
     
     console.group("Fetching additional data...");
-    teamsArray = await getTeamData(teamsArray);
+    let teamsArrayExtended = await getTeamData(teamsArray);
+    console.log(`Successfully fetched additional data for ${teamsArrayExtended.length} teams.`);
     console.groupEnd();
 
     console.group("Fetching matchup odds...");
-    teamsArray = await getMatchupOdds(teamsArray);
+    let teamsArrayMatchupOdds = await getMatchupOdds(teamsArrayExtended);
+    console.log(`Successfully fetched odds for ${teamsArrayExtended.length} matchups.`);
     console.groupEnd();
     
     // only update a few fields on the records
     if (hasInitialized) {
-      teamsArray = await addAirtableIDs(teamsArray);
+      const teams = await addAirtableIDs(teamsArrayMatchupOdds);
+      
+      if (!teams) {
+        console.error("Error adding Airtable IDs. Exiting...");
+        return;
+      }
 
       console.group(`Updating team data in airtable...`);
-      for (const team of teamsArray) {
+      console.log(`Updating ${teams.length} team records in Airtable...`);
+      for (const team of teams) {
         await updateTeamRecord(team);
       }
       console.groupEnd();
+
+      console.log(`All ${teams.length} NCAA team data for week ${week} have been updated in Airtable.`);
+
       return;
     }
 
     // add all records
     console.group(`Adding team data to airtable...`);
-    for (const team of teamsArray) {
+    for (const team of teams) {
       await addTeamToAirtable(team);
     }
     console.groupEnd();
 
-    console.log(`All ${teamsArray.length} NCAA team data for the ${year} season have been added to Airtable.`);
+    console.log(`All ${teams.length} NCAA team data for the ${year} season have been added to Airtable.`);
     return;
   }
 
