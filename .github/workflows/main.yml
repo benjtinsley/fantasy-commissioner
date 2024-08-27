@@ -1,9 +1,11 @@
 name: Update Data
 
-# Schedule the workflow to run once a week
+# Schedule the workflow to run several times a week, and multiple times on Saturdays
 on:
   schedule:
-    - cron: '00 8 * * *' # Runs every day at 08:00 GMT (01:00 MT)
+    - cron: '00 10 * * *' # Runs every day at 10:00 GMT (03:00 MT)
+    - cron: '0 20-23 * * 6' # Runs every Saturday at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
+    - cron: '0 0-8 * * 0' # Runs every Sunday at 00:00 GMT (Saturday 17:00 MT) until 07:00 GMT (Sunday 01:00 MT)
 
 jobs:
   weekly-task:
@@ -22,6 +24,14 @@ jobs:
         run: npm install
 
       - name: Check Date and Run Script
+        env:
+          AIRTABLE_PERSONAL_ACCESS_TOKEN: ${{ secrets.AIRTABLE_PERSONAL_ACCESS_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
+          BASE_API_URL: ${{ secrets.BASE_API_URL }}
+          SEASON_YEAR: ${{ secrets.SEASON_YEAR }}
+          TEAM_API_URL: ${{ secrets.TEAM_API_URL }}
+          SCOREBOARD_API_URL: ${{ secrets.SCOREBOARD_API_URL }}
         run: |
           # Get the current date
           current_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
