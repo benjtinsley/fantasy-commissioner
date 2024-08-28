@@ -23,21 +23,28 @@ jobs:
       - name: Install Dependencies
         run: npm install
 
-      - name: Check Date and Run Script
+      - name: Use Variables, Check Date and Run Script
         env:
-          AIRTABLE_PERSONAL_ACCESS_TOKEN: ${{ secrets.AIRTABLE_PERSONAL_ACCESS_TOKEN }}
-          AIRTABLE_BASE_ID: ${{ secrets.AIRTABLE_BASE_ID }}
-          AIRTABLE_TABLE_ID: ${{ secrets.AIRTABLE_TABLE_ID }}
-          BASE_API_URL: ${{ secrets.BASE_API_URL }}
-          SEASON_YEAR: ${{ secrets.SEASON_YEAR }}
-          TEAM_API_URL: ${{ secrets.TEAM_API_URL }}
-          SCOREBOARD_API_URL: ${{ secrets.SCOREBOARD_API_URL }}
+          AIRTABLE_PERSONAL_ACCESS_TOKEN: ${{ vars.AIRTABLE_PERSONAL_ACCESS_TOKEN }}
+          AIRTABLE_BASE_ID: ${{ vars.AIRTABLE_BASE_ID }}
+          AIRTABLE_TABLE_ID: ${{ vars.AIRTABLE_TABLE_ID }}
+          BASE_API_URL: ${{ vars.BASE_API_URL }}
+          SEASON_YEAR: ${{ vars.SEASON_YEAR }}
+          TEAM_API_URL: ${{ vars.TEAM_API_URL }}
+          SCOREBOARD_API_URL: ${{ vars.SCOREBOARD_API_URL }}
+
         run: |
+          # Display insensitive variables
+          echo "season year: $SEASON_YEAR"
+          echo "base api url: $BASE_API_URL"
+          echo "team api url: $TEAM_API_URL"
+          echo "scoreboard api: $SCOREBOARD_API_URL"
+          
           # Get the current date
           current_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
-          # Define start and end dates
-          start_date="2024-07-01T00:00:00Z"
+          # Define start and end dates (Aug 1 - Nov 24, 2024)
+          start_date="2024-08-01T00:00:00Z"
           end_date="2024-11-24T23:59:59Z"
           
           # Compare dates
