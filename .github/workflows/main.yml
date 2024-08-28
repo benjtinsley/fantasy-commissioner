@@ -6,6 +6,9 @@ on:
     - cron: '00 10 * * *' # Runs every day at 10:00 GMT (03:00 MT)
     - cron: '0 20-23 * * 6' # Runs every Saturday at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
     - cron: '0 0-8 * * 0' # Runs every Sunday at 00:00 GMT (Saturday 17:00 MT) until 07:00 GMT (Sunday 01:00 MT)
+  
+  # Allows manual triggering of the workflow within Github Actions UI
+  workflow_dispatch:
 
 jobs:
   weekly-task:
