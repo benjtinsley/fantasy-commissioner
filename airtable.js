@@ -267,9 +267,9 @@ async function addAirtableIDs(teams) {
     const airtableIdMap = {};
     csvData.forEach((row) => {
       const teamName = row['Team'].trim();
-      const airtableID = row.Airtable_ID.trim();
-      // console.log(`Adding Airtable ID for ${teamName} with ID: ${airtableID}`);
-      airtableIdMap[teamName] = airtableID;
+      const environmentVar = row['Environment_Var'].trim();
+      // use the environment variable to get the Airtable ID
+      airtableIdMap[teamName] = process.env[environmentVar];
     });
 
     // Add Airtable ID to team data objects
