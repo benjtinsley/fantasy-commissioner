@@ -164,7 +164,7 @@ async function getMatchupOdds(teams) {
         if (matchup.shortName == team.nextGameDetails) {
           matchupFound = true;
           const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
-          const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.video?.[0]?.headline;
+          const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.shortLinkText;
 
           console.log(`${team.nextGameDetails} matchup found. Odds: ${nextGameOdds || lastGameResult}`);
           
