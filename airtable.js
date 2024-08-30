@@ -117,13 +117,15 @@ async function getTeamData(teams) {
       const response = await axios.get(teamUrl + team.id);
       const teamInfo = response.data.team;
       const nextGameDetails = teamInfo.nextEvent?.[0]?.shortName;
-
+      const winPercentage = teamInfo.record.items[0].stats.find(stat => stat.name === 'winPercent').value;
+      
       teamData.push({
         ...team,
         standingSummary: teamInfo.standingSummary,
         logo: teamInfo.logos[0].href,
         espnUrl: teamInfo.links[0].href,
-        nextGameDetails: nextGameDetails
+        nextGameDetails: nextGameDetails,
+        winPercentage: winPercentage
       });
     }
 
@@ -164,9 +166,9 @@ async function getMatchupOdds(teams) {
         if (matchup.shortName == team.nextGameDetails) {
           matchupFound = true;
           const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
-          const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.shortLinkText;
-
-          console.log(`${team.nextGameDetails} matchup found. Odds: ${nextGameOdds || lastGameResult}`);
+          const isCompleted = matchup?.status.type.completed;
+          
+          // console.log(`${team.nextGameDetails} matchup found. Odds: ${nextGameOdds || lastGameResult}`);
           
           if (!!nextGameOdds) {
             teamData.push({
@@ -174,12 +176,24 @@ async function getMatchupOdds(teams) {
               nextGameOdds: nextGameOdds
             });
             // console.log(`Odds found for ${team.nextGameDetails}: ${teamData.nextGameOdds}`);
-          } else if (!!lastGameResult) {
+            
+          } else if (isCompleted) {
+            const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.shortLinkText;
+            const competitor1 = matchup.competitions[0].competitors[0].team.abbreviation;
+            const competitor1Score = matchup.competitions[0].competitors[0].score;
+            const competitor2 = matchup.competitions[0].competitors[1].team.abbreviation;
+            const competitor2Score = matchup.competitions[0].competitors[1].score;
+            const finalScore = `${competitor1} ${competitor1Score} - ${competitor2Score} ${competitor2} `;
+            let recap = finalScore;
+            
+            if (lastGameResult) {
+              recap = `${finalScore}\nRecap: ${lastGameResult}`;
+            }
             teamData.push({
               ...team,
-              nextGameOdds: `Recap: ${lastGameResult}`
+              nextGameOdds: recap
             });
-            // console.log(`Last game result for ${team.nextGameDetails}: ${teamData.lastGameResult}`);
+            // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
           continue;
         }
@@ -212,7 +226,8 @@ async function updateTeamRecord(team) {
       fldwUh1llsuqfcefE: team.standingSummary,
       fldr9L1u7ouUh42uR: team.nextGameDetails,
       fldzp5QddXZmA3K3S: team.nextGameOdds,
-      fldpzovvWKafBv8P4: team.awayPointDiff
+      fldpzovvWKafBv8P4: team.awayPointDiff,
+      fldFB6ygI8QvD1qtt: team.winPercentage
     });
     console.log(`${team.location} record updated.`);
   } catch (error) {
@@ -232,6 +247,7 @@ async function addTeamToAirtable(team) {
       fldECHdTFhzJXczaU: team.overallRecord,
       fldMxQHaRzDBU69ho: team.conference,
       fldB5TAOajQ4fcBEV: team.overallWins,
+      fldFB6ygI8QvD1qtt: team.winPercentage,
       fldCG4qAAwpJlVvXD: team.abbreviation,
       fldVuh4vWxmLnqmpe: team.location,
       fldwUh1llsuqfcefE: team.standingSummary,
@@ -304,14 +320,24 @@ async function addAirtableIDs(teams) {
     console.log(`Successfully processed data for ${teamsArray.length} teams.`);
     console.groupEnd();
     
-    console.group("Fetching additional data...");
+    console.group(`Fetching additional data for ${teamsArray.length} teams...`);
     let teamsArrayExtended = await getTeamData(teamsArray);
+
+    if (teamsArray.length !== teamsArrayExtended.length) {
+      console.warn("⚠️  There are not the same amount of teams in the original and extended arrays. ⚠️");
+    }
+
     console.log(`Successfully fetched additional data for ${teamsArrayExtended.length} teams.`);
     console.groupEnd();
 
-    console.group("Fetching matchup odds...");
+    console.group(`Fetching matchup odds for ${teamsArrayExtended.length} teams....`);
     let teamsArrayMatchupOdds = await getMatchupOdds(teamsArrayExtended);
-    console.log(`Successfully fetched odds for ${teamsArrayExtended.length} matchups.`);
+    
+    if (teamsArrayExtended.length !== teamsArrayMatchupOdds.length) {
+      console.warn("⚠️ There are not the same amount of teams in the extended and odds arrays. ⚠️");
+    }
+    
+    console.log(`Successfully fetched odds for ${teamsArrayMatchupOdds.length} teams.`);
     console.groupEnd();
     
     // only update a few fields on the records
@@ -323,8 +349,7 @@ async function addAirtableIDs(teams) {
         return;
       }
 
-      console.group(`Updating team data in airtable...`);
-      console.log(`Updating ${teams.length} team records in Airtable...`);
+      console.group(`Updating ${teams.length} team records in Airtable...`);
       for (const team of teams) {
         await updateTeamRecord(team);
       }
