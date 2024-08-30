@@ -3,7 +3,7 @@ name: Update Data
 # Schedule the workflow to run several times a week, and multiple times on Saturdays
 on:
   schedule:
-    - cron: '00 10 * * *' # Runs every day at 10:00 GMT (03:00 MT)
+    - cron: '30 5 * * *' # Runs every day at 5:30 GMT (22:30 MT)
     - cron: '*/15 20-23 * * 6' # Runs every 15 minutes on Saturday starting at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
     - cron: '*/15 0-8 * * 0' # Runs every 15 minutes on Sunday starting at 00:00 GMT (Saturday 17:00 MT) until 07:00 GMT (Sunday 01:00 MT)
   
