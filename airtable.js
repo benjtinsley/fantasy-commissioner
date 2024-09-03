@@ -117,14 +117,30 @@ async function getTeamData(teams) {
       const response = await axios.get(teamUrl + team.id);
       const teamInfo = response.data.team;
       const nextGameDetails = teamInfo.nextEvent?.[0]?.shortName;
+      const nextGameTimeString = teamInfo.nextEvent?.[0]?.date;
       const winPercentage = teamInfo.record.items[0].stats.find(stat => stat.name === 'winPercent').value;
       
+      const options = {
+        weekday: 'short',   // Full day name (e.g., Saturday)
+        month: 'short',    // Short month name (e.g., Sep)
+        day: 'numeric',    // Numeric day of the month (e.g., 14)
+        hour: '2-digit',   // 2-digit hour
+        minute: '2-digit', // 2-digit minute
+        timeZone: 'America/New_York',  // Converts to Eastern Time
+        timeZoneName: 'short'          // Short timezone name (e.g., EDT)
+      };
+      
+      const nextGameTimeDate = new Date(nextGameTimeString);
+      const formattedDateTime = nextGameTimeDate.toLocaleString('en-US', options);
+    
+      console.log(`-- Next game for ${team.location}: ${nextGameDetails} at ${formattedDateTime}`);
+
       teamData.push({
         ...team,
         standingSummary: teamInfo.standingSummary,
         logo: teamInfo.logos[0].href,
         espnUrl: teamInfo.links[0].href,
-        nextGameDetails: nextGameDetails,
+        nextGameDetails: `${nextGameDetails}\n${formattedDateTime}`,
         winPercentage: winPercentage
       });
     }
@@ -163,19 +179,17 @@ async function getMatchupOdds(teams) {
       // console.log(`Checking odds for ${team.nextGameDetails}...`);
       
       for (const matchup of weeklyMatchups) {
-        if (matchup.shortName == team.nextGameDetails) {
-          matchupFound = true;
+        if (team.nextGameDetails.includes(matchup.shortName)) {
           const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
           const isCompleted = matchup?.status.type.completed;
-          
-          // console.log(`${team.nextGameDetails} matchup found. Odds: ${nextGameOdds || lastGameResult}`);
-          
+
           if (!!nextGameOdds) {
+            matchupFound = true;
+            console.log(`${team.location}'s next matchup ${team.nextGameDetails} found. Odds: ${nextGameOdds}`);
             teamData.push({
               ...team,
               nextGameOdds: nextGameOdds
             });
-            // console.log(`Odds found for ${team.nextGameDetails}: ${teamData.nextGameOdds}`);
             
           } else if (isCompleted) {
             const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.shortLinkText;
@@ -185,6 +199,8 @@ async function getMatchupOdds(teams) {
             const competitor2Score = matchup.competitions[0].competitors[1].score;
             const finalScore = `${competitor1} ${competitor1Score} - ${competitor2Score} ${competitor2} `;
             let recap = finalScore;
+
+            console.log(`Last game result for ${team.nextGameDetails}: ${lastGameResult}`);
             
             if (lastGameResult) {
               recap = `${finalScore}\nRecap: ${lastGameResult}`;
@@ -198,12 +214,13 @@ async function getMatchupOdds(teams) {
           continue;
         }
       }
-
+      
       if (!matchupFound) {
+        console.log(`No odds found for ${team.location}'s matchup ${team.nextGameDetails}.`);
         // set default odds to no odds
         teamData.push({
           ...team,
-          nextGameOdds: '  none'
+          nextGameOdds: '(none)'
         });
       }
     }
