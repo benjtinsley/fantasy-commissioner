@@ -120,27 +120,31 @@ async function getTeamData(teams) {
       const nextGameTimeString = teamInfo.nextEvent?.[0]?.date;
       const winPercentage = teamInfo.record.items[0].stats.find(stat => stat.name === 'winPercent').value;
       
-      const options = {
-        weekday: 'short',   // Full day name (e.g., Saturday)
-        month: 'short',    // Short month name (e.g., Sep)
-        day: 'numeric',    // Numeric day of the month (e.g., 14)
-        hour: '2-digit',   // 2-digit hour
-        minute: '2-digit', // 2-digit minute
-        timeZone: 'America/New_York',  // Converts to Eastern Time
-        timeZoneName: 'short'          // Short timezone name (e.g., EDT)
-      };
+      // Note: Added a Date column to Airtable to store the next game time, so the following code is not needed
+      // added 11/18/24, if you come across this some time later, it all worked and you can delete it
+
+      // const options = {
+      //   weekday: 'short',   // Full day name (e.g., Saturday)
+      //   month: 'short',    // Short month name (e.g., Sep)
+      //   day: 'numeric',    // Numeric day of the month (e.g., 14)
+      //   hour: '2-digit',   // 2-digit hour
+      //   minute: '2-digit', // 2-digit minute
+      //   timeZone: 'America/New_York',  // Converts to Eastern Time
+      //   timeZoneName: 'short'          // Short timezone name (e.g., EDT)
+      // };
       
-      const nextGameTimeDate = new Date(nextGameTimeString);
-      const formattedDateTime = nextGameTimeDate.toLocaleString('en-US', options);
+      // const nextGameTimeDate = new Date(nextGameTimeString);
+      // const formattedDateTime = nextGameTimeDate.toLocaleString('en-US', options);
     
-      console.log(`-- Next game for ${team.location}: ${nextGameDetails} at ${formattedDateTime}`);
+      // console.log(`-- Next game for ${team.location}: ${nextGameDetails} at ${formattedDateTime}`);
 
       teamData.push({
         ...team,
         standingSummary: teamInfo.standingSummary,
         logo: teamInfo.logos[0].href,
         espnUrl: teamInfo.links[0].href,
-        nextGameDetails: `${nextGameDetails}\n${formattedDateTime}`,
+        nextGameDetails: nextGameDetails,
+        nextGameTime: nextGameTimeString,
         winPercentage: winPercentage
       });
     }
@@ -242,6 +246,7 @@ async function updateTeamRecord(team) {
       fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
       fldr9L1u7ouUh42uR: team.nextGameDetails,
+      fldqq5h0eVrbSz1tb: team.nextGameTime,
       fldzp5QddXZmA3K3S: team.nextGameOdds,
       fldpzovvWKafBv8P4: team.awayPointDiff,
       fldFB6ygI8QvD1qtt: team.winPercentage
