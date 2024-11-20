@@ -166,9 +166,10 @@ async function getMatchupOdds(teams) {
     console.log(`Getting odds for upcoming matchups...`);
     const response = await axios.get(matchupUrl);
     // for console message
-    week = response.data.week.number;
+    week = response.data.weekNumber;
 
-    const weeklyMatchups = response.data.events;
+    const weeklyMatchups = Object.values(response.data.events).flat();
+
     console.log(`Successfully pulled odds for ${weeklyMatchups.length} matchups. Populating....`);
 
     for (const team of teams) {
@@ -183,9 +184,13 @@ async function getMatchupOdds(teams) {
       // console.log(`Checking odds for ${team.nextGameDetails}...`);
       
       for (const matchup of weeklyMatchups) {
-        if (team.nextGameDetails.includes(matchup.shortName)) {
-          const nextGameOdds = matchup?.competitions?.[0]?.odds?.[0]?.details;
-          const isCompleted = matchup?.status.type.completed;
+        const isFirstTeam = matchup.competitors[0].abbrev.includes(team.abbreviation);
+        const isSecondTeam = matchup.competitors[1].abbrev.includes(team.abbreviation);
+        const isParticipating = isFirstTeam || isSecondTeam;
+
+        if (isParticipating) {
+          const nextGameOdds = matchup?.odds?.details;
+          const isCompleted = matchup?.completed;
 
           if (!!nextGameOdds) {
             matchupFound = true;
@@ -194,28 +199,23 @@ async function getMatchupOdds(teams) {
               ...team,
               nextGameOdds: nextGameOdds
             });
-            
           } else if (isCompleted) {
-            const lastGameResult = matchup?.competitions?.[0]?.headlines?.[0]?.shortLinkText;
-            const competitor1 = matchup.competitions[0].competitors[0].team.abbreviation;
-            const competitor1Score = matchup.competitions[0].competitors[0].score;
-            const competitor2 = matchup.competitions[0].competitors[1].team.abbreviation;
-            const competitor2Score = matchup.competitions[0].competitors[1].score;
-            const finalScore = `${competitor1} ${competitor1Score} - ${competitor2Score} ${competitor2} `;
-            let recap = finalScore;
-
-            console.log(`Last game result for ${team.nextGameDetails}: ${lastGameResult}`);
+            const competitor1 = matchup.competitors[0].abbrev;
+            const competitor1Score = matchup.competitors[0].score;
+            const competitor2 = matchup.competitors[1].abbrev;
+            const competitor2Score = matchup.competitors[1].score;
+            const finalScore =  competitor1Score > competitor2Score ? `${competitor1} by ${competitor1Score - competitor2Score}` : `${competitor2} by ${competitor2Score - competitor1Score}`;
             
-            if (lastGameResult) {
-              recap = `${finalScore}\nRecap: ${lastGameResult}`;
-            }
+            console.log(`Last game result for ${team.nextGameDetails}: ${finalScore}`);
+
             teamData.push({
               ...team,
-              nextGameOdds: recap
+              lastResult: finalScore
             });
             // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
-          continue;
+
+          break;
         }
       }
       
@@ -248,6 +248,7 @@ async function updateTeamRecord(team) {
       fldr9L1u7ouUh42uR: team.nextGameDetails,
       fldqq5h0eVrbSz1tb: team.nextGameTime,
       fldzp5QddXZmA3K3S: team.nextGameOdds,
+      fldK3fF59cefvZPyq: team.lastResult,
       fldpzovvWKafBv8P4: team.awayPointDiff,
       fldFB6ygI8QvD1qtt: team.winPercentage
     });
