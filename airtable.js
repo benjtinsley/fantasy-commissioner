@@ -184,8 +184,8 @@ async function getMatchupOdds(teams) {
       // console.log(`Checking odds for ${team.nextGameDetails}...`);
       
       for (const matchup of weeklyMatchups) {
-        const isFirstTeam = matchup.competitors[0].abbrev.includes(team.abbreviation);
-        const isSecondTeam = matchup.competitors[1].abbrev.includes(team.abbreviation);
+        const isFirstTeam = (matchup.competitors[0].abbrev).toString() == team.abbreviation.toString();
+        const isSecondTeam = (matchup.competitors[1].abbrev).toString() == team.abbreviation.toString();
         const isParticipating = isFirstTeam || isSecondTeam;
 
         if (isParticipating) {
@@ -214,7 +214,6 @@ async function getMatchupOdds(teams) {
             });
             // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
-
           break;
         }
       }
@@ -238,20 +237,24 @@ async function getMatchupOdds(teams) {
 
 // Function to update team record in Airtable
 async function updateTeamRecord(team) {
-  
   try {
-    // Update team via field IDs
-    await base(TABLE_ID).update(team.airtableID, {
+    // Dynamically build the update object
+    const updateData = {
       fldECHdTFhzJXczaU: team.overallRecord,
       fldB5TAOajQ4fcBEV: team.overallWins,
       fldwUh1llsuqfcefE: team.standingSummary,
       fldr9L1u7ouUh42uR: team.nextGameDetails,
       fldqq5h0eVrbSz1tb: team.nextGameTime,
-      fldzp5QddXZmA3K3S: team.nextGameOdds,
       fldK3fF59cefvZPyq: team.lastResult,
       fldpzovvWKafBv8P4: team.awayPointDiff,
-      fldFB6ygI8QvD1qtt: team.winPercentage
-    });
+      fldFB6ygI8QvD1qtt: team.winPercentage,
+      // only update the next game odds if there are odds to take, 
+      // otherwise leave last game's odds there for comparison
+      ...(team.nextGameOdds ? { fldzp5QddXZmA3K3S: team.nextGameOdds } : {})
+    };
+
+    // Update team via field IDs
+    await base(TABLE_ID).update(team.airtableID, updateData);
     console.log(`${team.location} record updated.`);
   } catch (error) {
     console.error(`Error updating ${team.location} in Airtable:`, error);
@@ -260,8 +263,8 @@ async function updateTeamRecord(team) {
 
 // Function to add team to Airtable
 async function addTeamToAirtable(team) {
-  const nextGameDetails = team?.nextGameDetails.length > 0 ? team.nextGameDetails : '-- No Game --';
-  const nextGameOdds = team?.nextGameOdds.length > 0 ? team.nextGameOdds : '-- No Odds --';
+  const nextGameDetails = team?.nextGameDetails?.length > 0 ? team.nextGameDetails : '-- No Game --';
+  const nextGameOdds = team?.nextGameOdds?.length > 0 ? team.nextGameOdds : '-- No Odds --';
 
   try {
     // Add team to Airtable via field IDs
