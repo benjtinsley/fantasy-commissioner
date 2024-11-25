@@ -197,7 +197,8 @@ async function getMatchupOdds(teams) {
             console.log(`${team.location}'s next matchup ${team.nextGameDetails} found. Odds: ${nextGameOdds}`);
             teamData.push({
               ...team,
-              nextGameOdds: nextGameOdds
+              nextGameOdds: nextGameOdds,
+              lastResult: null
             });
           } else if (isCompleted) {
             const competitor1 = matchup.competitors[0].abbrev;
@@ -214,7 +215,7 @@ async function getMatchupOdds(teams) {
             });
             // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
-          break;
+          continue;
         }
       }
       
