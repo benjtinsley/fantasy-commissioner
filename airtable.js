@@ -191,10 +191,13 @@ async function getMatchupOdds(teams) {
         if (isParticipating) {
           const nextGameOdds = matchup?.odds?.details;
           const isCompleted = matchup?.completed;
+          
+          // announce the matchup found
+          console.log(`${team.location}'s matchup ${team.nextGameDetails} found. Odds: ${nextGameOdds}. It ${isCompleted ? 'IS completed' : 'is NOT completed'}.`);
 
           if (!!nextGameOdds) {
             matchupFound = true;
-            console.log(`${team.location}'s next matchup ${team.nextGameDetails} found. Odds: ${nextGameOdds}`);
+
             teamData.push({
               ...team,
               nextGameOdds: nextGameOdds,
@@ -206,12 +209,13 @@ async function getMatchupOdds(teams) {
             const competitor2 = matchup.competitors[1].abbrev;
             const competitor2Score = matchup.competitors[1].score;
             const finalScore =  competitor1Score > competitor2Score ? `${competitor1} by ${competitor1Score - competitor2Score}` : `${competitor2} by ${competitor2Score - competitor1Score}`;
-            
+            const recap = matchup.status.resultColumnText;
+
             console.log(`Last game result for ${team.nextGameDetails}: ${finalScore}`);
 
             teamData.push({
               ...team,
-              lastResult: finalScore
+              lastResult: `${recap}\n${finalScore}`
             });
             // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
@@ -224,7 +228,7 @@ async function getMatchupOdds(teams) {
         // set default odds to no odds
         teamData.push({
           ...team,
-          nextGameOdds: '(none)'
+          nextGameOdds: ''
         });
       }
     }
@@ -251,7 +255,7 @@ async function updateTeamRecord(team) {
       fldFB6ygI8QvD1qtt: team.winPercentage,
       // only update the next game odds if there are odds to take, 
       // otherwise leave last game's odds there for comparison
-      ...(team.nextGameOdds ? { fldzp5QddXZmA3K3S: team.nextGameOdds } : {})
+      ...(!!team.nextGameOdds ? { fldzp5QddXZmA3K3S: team.nextGameOdds } : {})
     };
 
     // Update team via field IDs
@@ -351,7 +355,7 @@ async function addAirtableIDs(teams) {
     let teamsArrayExtended = await getTeamData(teamsArray);
 
     if (teamsArray.length !== teamsArrayExtended.length) {
-      console.warn("⚠️  There are not the same amount of teams in the original and extended arrays. ⚠️");
+      console.warn("⚠️ There are not the same amount of teams in the original and extended arrays. ⚠️");
     }
 
     console.log(`Successfully fetched additional data for ${teamsArrayExtended.length} teams.`);
@@ -367,10 +371,10 @@ async function addAirtableIDs(teams) {
     console.log(`Successfully fetched odds for ${teamsArrayMatchupOdds.length} teams.`);
     console.groupEnd();
     
+    const teams = await addAirtableIDs(teamsArrayMatchupOdds);
+    
     // only update a few fields on the records
     if (hasInitialized) {
-      const teams = await addAirtableIDs(teamsArrayMatchupOdds);
-      
       if (!teams) {
         console.error("Error adding Airtable IDs. Exiting...");
         return;
