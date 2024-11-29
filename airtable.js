@@ -208,14 +208,15 @@ async function getMatchupOdds(teams) {
             const competitor1Score = matchup.competitors[0].score;
             const competitor2 = matchup.competitors[1].abbrev;
             const competitor2Score = matchup.competitors[1].score;
-            const finalScore =  competitor1Score > competitor2Score ? `${competitor1} by ${competitor1Score - competitor2Score}` : `${competitor2} by ${competitor2Score - competitor1Score}`;
-            const recap = matchup.status.resultColumnText;
+            const finalSpread =  competitor1Score > competitor2Score ? `${competitor1} by ${competitor1Score - competitor2Score}` : `${competitor2} by ${competitor2Score - competitor1Score}`;
+            const finalScore = matchup.status.resultColumnText;
+            const recap = `${finalSpread}\n${!!finalScore ? finalScore : ''}`;
 
-            console.log(`Last game result for ${team.nextGameDetails}: ${finalScore}`);
+            console.log(`Last game result for ${team.nextGameDetails}: ${finalSpread}`);
 
             teamData.push({
               ...team,
-              lastResult: `${recap}\n${finalScore}`
+              lastResult: recap
             });
             // console.log(`Last game result for ${team.nextGameDetails}: ${recap}`);
           }
