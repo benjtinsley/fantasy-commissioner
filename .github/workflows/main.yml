@@ -190,7 +190,7 @@ jobs:
           # Compare dates
           if [[ "$current_date" > "$start_date" && "$current_date" < "$end_date" ]]; then
             echo "Current date is within the specified range. Running the script..."
-            node airtable.js
+            node index.js
           else
             echo "Current date is outside the specified range. Skipping the task."
           fi
