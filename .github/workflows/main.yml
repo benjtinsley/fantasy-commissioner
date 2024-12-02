@@ -1,13 +1,15 @@
 name: Update Data
 
-# Schedule the workflow to run several times a week, and multiple times on Saturdays
+# Schedule the workflow to run several times a week
 on:
   schedule:
     - cron: '30 13 * * *' # Runs every day at 13:30 GMT (6:30 MT)
-    - cron: '*/30 20-23 * * 6' # Runs every 30 minutes on Saturday starting at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
-    - cron: '*/30 0-8 * * 0' # Runs every 30 minutes on Sunday starting at 00:00 GMT (Saturday 17:00 MT) until 07:00 GMT (Sunday 01:00 MT)
-    # Uncomment this line during Wild Week
-    - cron: '*/30 20-23 * * 5' # Runs every 30 minutes on Friday starting at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
+    
+    # We got slapped on the wrist for running too many requests by Airtable, so we're cutting back to once a day
+    # - cron: '*/30 20-23 * * 6' # Runs every 30 minutes on Saturday starting at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
+    # - cron: '*/30 0-8 * * 0' # Runs every 30 minutes on Sunday starting at 00:00 GMT (Saturday 17:00 MT) until 07:00 GMT (Sunday 01:00 MT)
+    # # Uncomment this line during Wild Week
+    # - cron: '*/30 20-23 * * 5' # Runs every 30 minutes on Friday starting at 20:00 GMT (13:00 MT) until 23:00 GMT (16:00 MT)
   
   # Allows manual triggering of the workflow within Github Actions UI
   workflow_dispatch:
@@ -184,8 +186,8 @@ jobs:
           current_date=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           
           # Define start and end dates (Aug 1 - Dec 1, 2024)
-          start_date="2024-08-01T00:00:00Z"
-          end_date="2024-12-01T23:59:59Z"
+          start_date="2025-08-01T00:00:00Z"
+          end_date="2024-11-30T23:59:59Z"
           
           # Compare dates
           if [[ "$current_date" > "$start_date" && "$current_date" < "$end_date" ]]; then
